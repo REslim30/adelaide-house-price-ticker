@@ -31,6 +31,19 @@ def main(event, context):
 
     print("Finding element")
     daily_index = driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(3)").text
+    daily_index_movement = driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(2)").text
+    daily_index_movement = float(daily_index_movement)
+
+    daily_index_movement_padding = " "
+    daily_index_movement_prefix = ""
+    if (daily_index_movement > 0):
+        daily_index_movement_indicator = "🟢"
+        daily_index_movement_prefix = "+"
+    elif (daily_index_movement < 0):
+        daily_index_movement_indicator = "🔴"
+    else:
+        daily_index_movement_indicator = ""
+        daily_index_movement_padding = ""
 
     print("Closing driver")
     driver.close()
@@ -40,7 +53,7 @@ def main(event, context):
     client = tweepy.Client(consumer_key=api_key, consumer_secret=api_secret, access_token=access_token, access_token_secret=access_secret)
 
     print("Creating tweet")
-    client.create_tweet(text=f"{datetime.today().strftime('%d %b %Y')}\nCore Logic Daily House Value Index: {daily_index}")
+    client.create_tweet(text=f"{datetime.today().strftime('%d %b %Y')}\nCoreLogic Daily Home Value Index: {daily_index} ({daily_index_movement_indicator}{daily_index_movement_padding}{daily_index_movement_prefix}{daily_index_movement})")
 
     response = {
         "statusCode": 200,
