@@ -1,21 +1,14 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import tweepy
-from datetime import datetime
+from datetime import datetime, timedelta
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 import os
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import traceback
 
 def main(event, context):
-    api_key = os.environ.get("API_KEY")
-    api_secret = os.environ.get("API_SECRET")
-
-    access_token = os.environ.get("ACCESS_TOKEN")
-    access_secret = os.environ.get("ACCESS_SECRET")
-
-    if (api_key == None or api_secret == None or access_token == None or access_secret == None):
-        raise RuntimeError("Missing key/secret");
-
     options = Options()
     options.binary_location = '/opt/headless-chromium'
     options.add_argument('--headless')
@@ -26,38 +19,87 @@ def main(event, context):
     print("Initializing web driver")
     driver = webdriver.Chrome("/opt/chromedriver", options=options)
 
-    print("Accessing web page")
-    driver.get("https://www.corelogic.com.au/our-data/corelogic-indices")
+    try:
+        time_in_adelaide = datetime.utcnow() + timedelta(hours=9, minutes=30)
+        is_first_day_of_month = time_in_adelaide.day == 1
 
-    print("Finding element")
-    daily_index = driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(3)").text
-    daily_index_movement = driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(2)").text
-    daily_index_movement = float(daily_index_movement)
+        if (is_first_day_of_month):
+            print("Crawling Prop Track page")
+            driver.get("https://www.proptrack.com.au/home-price-index/")
 
-    daily_index_movement_padding = " "
-    daily_index_movement_prefix = ""
-    if (daily_index_movement > 0):
-        daily_index_movement_indicator = "🟢"
-        daily_index_movement_prefix = "+"
-    elif (daily_index_movement < 0):
-        daily_index_movement_indicator = "🔴"
-    else:
-        daily_index_movement_indicator = ""
-        daily_index_movement_padding = ""
+            print("Finding Prop Track indices")
+            driver.execute_script("window.scrollBy(0, 800);")
+            iframe = driver.find_element_by_css_selector("#latest iframe")
+            driver.switch_to.frame(iframe)
+            nestedIframe = driver.find_element_by_css_selector("#story iframe")
+            driver.switch_to.frame(nestedIframe)
+            xpath_selector = "//*[@id='main-container']//*[contains(@class, 'body-row')]"
+            element_present = EC.presence_of_element_located((By.XPATH, xpath_selector))
+            WebDriverWait(driver, 15).until(element_present)
+            rows = driver.find_elements_by_css_selector("#main-container .body-row")
+            for row in rows:
+                if ("Adelaide" in row.text):
+                    percentage_change = float(row.find_element_by_css_selector(".td:nth-child(2)").text.replace("%", ''))
+                    median_value = row.find_element_by_css_selector(".td:nth-child(4)").text
+                    last_month = datetime.today() - timedelta(days=28);
+                    tweet(text=f"{last_month.strftime('%b %Y')}\nPropTrack All Dwellings Median Price: {median_value} ({format_index_change(percentage_change)}%)")
+    except Exception as e:
+        print_stack_trace(e)
+
+    try:
+        print("Crawling Core logic page")
+        driver.get("https://www.corelogic.com.au/our-data/corelogic-indices/")
+
+        print("Finding Core Logic indices")
+        daily_index = driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(3)").text
+        daily_index_movement = driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(2)").text
+        daily_index_movement = float(daily_index_movement)
+
+        tweet(f"{datetime.today().strftime('%d %b %Y')}\nCoreLogic Daily Home Value Index: {daily_index} ({format_index_change(daily_index_movement)})")
+    except Exception as e:
+        print_stack_trace(e)
 
     print("Closing driver")
     driver.close()
     driver.quit()
 
-    print("Initializing Twitter client")
-    client = tweepy.Client(consumer_key=api_key, consumer_secret=api_secret, access_token=access_token, access_token_secret=access_secret)
-
-    print("Creating tweet")
-    client.create_tweet(text=f"{datetime.today().strftime('%d %b %Y')}\nCoreLogic Daily Home Value Index: {daily_index} ({daily_index_movement_indicator}{daily_index_movement_padding}{daily_index_movement_prefix}{daily_index_movement})")
-
     response = {
         "statusCode": 200,
-        "body": "Selenium Headless Chrome Initialized"
+        "body": "Index crawling job complete"
     }
 
     return response
+
+def format_index_change(index_change: float or int) -> str:
+    padding = " "
+    prefix = ""
+    if (index_change > 0):
+        indicator = "🟢"
+        prefix = "+"
+    elif (index_change < 0):
+        indicator = "🔴"
+        prefix = "-"
+    else:
+        indicator = ""
+        padding = ""
+    
+    return f"{indicator}{padding}{prefix}{index_change}"
+
+def tweet(text: str) -> None:
+    print("Sending tweet")
+    api_key = os.environ.get("API_KEY")
+    api_secret = os.environ.get("API_SECRET")
+    access_token = os.environ.get("ACCESS_TOKEN")
+    access_secret = os.environ.get("ACCESS_SECRET")
+
+    if (api_key == None or api_secret == None or access_token == None or access_secret == None):
+        raise RuntimeError("Missing key/secret");
+
+    client = tweepy.Client(consumer_key=api_key, consumer_secret=api_secret, access_token=access_token, access_token_secret=access_secret)
+    client.create_tweet(text=text)
+
+def print_stack_trace(e: Exception) -> None:
+    stack_trace = traceback.format_exc()
+    print(f"An error occurred: {e}")
+    print("Stack trace:")
+    print(stack_trace)
