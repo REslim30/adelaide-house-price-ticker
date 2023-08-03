@@ -59,6 +59,22 @@ def main(event, context):
     except Exception as e:
         print_stack_trace(e)
 
+    try:
+        # Only run on Saturdays (SQM research updates their indexes on Fridays)
+        if (datetime.today().weekday == 5):
+            print("Crawling SQM Research Weekly rent indexes")
+            driver.get("https://sqmresearch.com.au/weekly-rents.php?region=sa-Adelaide&type=c&t=1")
+
+            table = driver.find_element_by_class_name("changetable")
+            row = table.find_element_by_css_selector("tr:nth-child(3)")
+            rent = row.find_element_by_css_selector("td:nth-child(3)").text
+            index_change = row.find_element_by_css_selector("td:nth-child(4)").text
+            yesterday = datetime.now() - timedelta(days=1)
+            tweet(f"Week ending {yesterday.strftime('%d %b %Y')}\nSQM Research Weekly Rents: ${rent} ({format_index_change(float(index_change))})")
+
+    except Exception as e:
+        print_stack_trace(e)
+
     print("Closing driver")
     driver.close()
     driver.quit()
@@ -78,7 +94,6 @@ def format_index_change(index_change: float or int) -> str:
         prefix = "+"
     elif (index_change < 0):
         indicator = "🔴"
-        prefix = "-"
     else:
         indicator = ""
         padding = ""
