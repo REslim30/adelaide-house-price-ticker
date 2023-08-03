@@ -23,6 +23,7 @@ def main(event, context):
         time_in_adelaide = datetime.utcnow() + timedelta(hours=9, minutes=30)
         is_first_day_of_month = time_in_adelaide.day == 1
 
+        crawl_job_failed = False
         if (is_first_day_of_month):
             print("Crawling Prop Track page")
             driver.get("https://www.proptrack.com.au/home-price-index/")
@@ -45,6 +46,7 @@ def main(event, context):
                     tweet(text=f"{last_month.strftime('%b %Y')}\nPropTrack All Dwellings Median Price: {median_value} ({format_index_change(percentage_change)}%)")
     except Exception as e:
         print_stack_trace(e)
+        crawl_job_failed = True
 
     try:
         print("Crawling Core logic page")
@@ -58,6 +60,7 @@ def main(event, context):
         tweet(f"{datetime.today().strftime('%d %b %Y')}\nCoreLogic Daily Home Value Index: {daily_index} ({format_index_change(daily_index_movement)})")
     except Exception as e:
         print_stack_trace(e)
+        crawl_job_failed = True
 
     try:
         # Only run on Saturdays (SQM research updates their indexes on Fridays)
@@ -71,20 +74,21 @@ def main(event, context):
             index_change = row.find_element_by_css_selector("td:nth-child(4)").text
             yesterday = datetime.now() - timedelta(days=1)
             tweet(f"Week ending {yesterday.strftime('%d %b %Y')}\nSQM Research Weekly Rents: ${rent} ({format_index_change(float(index_change))})")
-
     except Exception as e:
         print_stack_trace(e)
+        crawl_job_failed = True
 
     print("Closing driver")
     driver.close()
     driver.quit()
 
-    response = {
-        "statusCode": 200,
-        "body": "Index crawling job complete"
-    }
-
-    return response
+    if (crawl_job_failed):
+        raise Exception("Crawl failed. From lambda with request id: " + context.aws_request_id)
+    else:
+        return {
+            "statusCode": 200,
+            "body": "Index crawling job complete"
+        }
 
 def format_index_change(index_change: float or int) -> str:
     padding = " "
