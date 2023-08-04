@@ -9,3 +9,4 @@ unzip headless-chromium.zip
 zip chromdriver-v2.zip chromedriver headless-chromium
 
 python -m pip install -r requirements.txt -t python/lib/python3.7/site-packages
+zip -r python -i python.zip
