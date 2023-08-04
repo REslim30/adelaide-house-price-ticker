@@ -1,5 +1,5 @@
 # Adelaide Real Estate Twitter Ticker
-Twitter bot that serves continuous real estate market metrics
+Twitter bot that serves continuous house market metrics
 
 https://twitter.com/AdlHouseTicker
 
