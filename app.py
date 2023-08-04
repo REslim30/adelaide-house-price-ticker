@@ -7,6 +7,9 @@ import os
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import traceback
+import boto3
+
+dynamodb = boto3.client("dynamodb")
 
 def main(event, context):
     options = Options()
@@ -41,23 +44,23 @@ def main(event, context):
             for row in rows:
                 if ("Adelaide" in row.text):
                     percentage_change = float(row.find_element_by_css_selector(".td:nth-child(2)").text.replace("%", ''))
-                    median_value = row.find_element_by_css_selector(".td:nth-child(4)").text
+                    median_value_in_dollars = row.find_element_by_css_selector(".td:nth-child(4)").text
+                    median_value_in_dollars_stripped = median_value_in_dollars.replace('$', '').replace(",", "")
                     last_month = datetime.today() - timedelta(days=28);
-                    tweet(text=f"{last_month.strftime('%b %Y')}\nPropTrack All Dwellings Median Price: {median_value} ({format_index_change(percentage_change)}%)")
-    except Exception as e:
-        print_stack_trace(e)
-        crawl_job_failed = True
-
-    try:
-        print("Crawling Core logic page")
-        driver.get("https://www.corelogic.com.au/our-data/corelogic-indices/")
-
-        print("Finding Core Logic indices")
-        daily_index = driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(3)").text
-        daily_index_movement = driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(2)").text
-        daily_index_movement = float(daily_index_movement)
-
-        tweet(f"{datetime.today().strftime('%d %b %Y')}\nCoreLogic Daily Home Value Index: {daily_index} ({format_index_change(daily_index_movement)})")
+                    tweet(text=f"{last_month.strftime('%b %Y')}\nPropTrack All Dwellings Median Price: {median_value_in_dollars} ({format_index_change(percentage_change)}%)")
+                    print("Storing into table")
+                    item_value = {
+                        "month": {
+                            "S": last_month.date().strftime('%Y-%m')
+                        },
+                        "monthly_growth_percentage": {
+                            'N': str(percentage_change)
+                        },
+                        "median_value_in_dollars": {
+                            'N': median_value_in_dollars_stripped
+                        }
+                    }
+                    dynamodb.put_item(TableName="proptrack_house_prices", Item=item_value)
     except Exception as e:
         print_stack_trace(e)
         crawl_job_failed = True
@@ -70,13 +73,54 @@ def main(event, context):
 
             table = driver.find_element_by_class_name("changetable")
             row = table.find_element_by_css_selector("tr:nth-child(3)")
-            rent = row.find_element_by_css_selector("td:nth-child(3)").text
-            index_change = row.find_element_by_css_selector("td:nth-child(4)").text
+            value_in_dollars = row.find_element_by_css_selector("td:nth-child(3)").text
+            change_day_on_day = row.find_element_by_css_selector("td:nth-child(4)").text
             yesterday = datetime.now() - timedelta(days=1)
-            tweet(f"Week ending {yesterday.strftime('%d %b %Y')}\nSQM Research Weekly Rents: ${rent} ({format_index_change(float(index_change))})")
+            tweet(f"Week ending {yesterday.strftime('%d %b %Y')}\nSQM Research Weekly Rents: ${value_in_dollars} ({format_index_change(float(change_day_on_day))})")
+            print("Storing into table")
+            item_value = {
+                "week_ending_on_date": {
+                    "S": yesterday.date().isoformat()
+                },
+                "change_on_prev_week": {
+                    'N': str(change_day_on_day)
+                },
+                "value_in_dollars": {
+                    'N': value_in_dollars
+                }
+            }
+            dynamodb.put_item(TableName="sqm_research_weekly_rents", Item=item_value)
     except Exception as e:
         print_stack_trace(e)
         crawl_job_failed = True
+
+    try:
+        print("Crawling Core logic page")
+        driver.get("https://www.corelogic.com.au/our-data/corelogic-indices/")
+
+        print("Finding Core Logic indices")
+        daily_index = driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(3)").text
+        change_day_on_day = driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(2)").text
+        change_day_on_day = float(change_day_on_day)
+        tweet(f"{datetime.today().strftime('%d %b %Y')}\nCoreLogic Daily Home Value Index: {daily_index} ({format_index_change(change_day_on_day)})")
+        
+        print("Storing Core Logic index value")
+        item_value = {
+            "date": {
+                "S": datetime.today().date().isoformat()
+            },
+            "change_day_on_day": {
+                'N': str(change_day_on_day)
+            },
+            "value": {
+                'N': daily_index
+            }
+        }
+        dynamodb.put_item(TableName="core_logic_daily_home_value", Item=item_value)
+    except Exception as e:
+        print_stack_trace(e)
+        crawl_job_failed = True
+
 
     print("Closing driver")
     driver.close()
