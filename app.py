@@ -88,7 +88,7 @@ def main(event, context):
 
     try:
         # Only run on Saturdays (SQM research updates their indexes on Fridays)
-        if (datetime.today().weekday == 5 or force_run_sqm_research_crawl):
+        if (datetime.today().weekday() == 5 or force_run_sqm_research_crawl):
             print("Crawling SQM Research Weekly rent indexes")
             driver.get("https://sqmresearch.com.au/weekly-rents.php?region=sa-Adelaide&type=c&t=1")
 
