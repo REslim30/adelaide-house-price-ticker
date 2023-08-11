@@ -25,9 +25,16 @@ class SeleniumCrawler(Crawler):
         self.driver.get("https://www.corelogic.com.au/our-data/corelogic-indices/")
 
         print("Finding Core Logic indices")
-        daily_index = self.driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(3)").text
         change_day_on_day = self.driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(2)").text
         change_day_on_day = float(change_day_on_day)
+        try:
+            daily_index = self.driver.execute_script("return BackSeriesExcelData.worm.filter(worm => worm.label === 'Adelaide')[0].data[0][1]")
+        except:
+            print("Failed to use Javascript to retrieve index retrieving using other method")
+            try:
+                daily_index = self.driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(3)").text
+            except:
+                pass
         return CoreLogicDailyHomeValue(datetime.today().date(), change_day_on_day, float(daily_index))
 
     def crawl_sqm_weekly_rents(self) -> SQMWeeklyRents:
