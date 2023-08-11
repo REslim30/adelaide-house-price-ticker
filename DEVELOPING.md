@@ -6,6 +6,8 @@ aws lambda invoke --function-name adelaide-house-price-ticker --invocation-type 
 
 ### Testing
 
+- Run python integration-test.py
+- Run python test.py
 - Edit local-test.py and enable all crawlers
 - Keep is_dry_run = True
 - Run python local-test.py

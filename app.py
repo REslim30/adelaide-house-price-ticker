@@ -2,10 +2,10 @@ from selenium.webdriver.common.by import By
 from datetime import datetime, timedelta
 import traceback
 import boto3
-from interfaces import Crawler, MessagePoster
+from dynamodb_repository import DynamoDBRepository
+from interfaces import Crawler, MessagePoster, Repository
 from selenium_crawler import SeleniumCrawler
 from tweet_poster import TweetPoster
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMWeeklyRents
 
 dynamodb = boto3.client("dynamodb")
 
@@ -25,31 +25,21 @@ def main(event, context):
         if (event.get("is_dry_run") == True):
             is_dry_run = True
     
+    crawl_job_failed = False
+
     message_poster: MessagePoster = TweetPoster(is_dry_run=is_dry_run)
     crawler: Crawler = SeleniumCrawler()
-
+    repository: Repository = DynamoDBRepository()
+    
     try:
         time_in_adelaide = datetime.utcnow() + timedelta(hours=9, minutes=30)
         is_first_day_of_month = time_in_adelaide.day == 1
 
-        crawl_job_failed = False
         if (is_first_day_of_month or force_run_proptrack_crawl):
             index = crawler.crawl_prop_track_house_prices()
             message_poster.post_prop_track_house_prices(index)
             if not is_dry_run:
-                print("Storing into table")
-                item_value = {
-                    "month": {
-                        "S": index.month_starting_on.strftime('%Y-%m')
-                    },
-                    "monthly_growth_percentage": {
-                        'N': str(index.monthly_growth_percentage)
-                    },
-                    "median_value_in_dollars": {
-                        'N': str(index.median_dollar_value)
-                    }
-                }
-                dynamodb.put_item(TableName="proptrack_house_prices", Item=item_value)
+                repository.post_prop_track_house_prices(index)
     except Exception as e:
         print_stack_trace(e)
         crawl_job_failed = True
@@ -60,19 +50,7 @@ def main(event, context):
             index = crawler.crawl_sqm_weekly_rents()
             message_poster.post_sqm_weekly_rents(index)
             if not is_dry_run:
-                print("Storing into table")
-                item_value = {
-                    "week_ending_on_date": {
-                        "S": index.week_ending_on_date.isoformat()
-                    },
-                    "change_on_prev_week": {
-                        'N': str(index.change_on_prev_week)
-                    },
-                    "value_in_dollars": {
-                        'N': str(index.dollar_value)
-                    }
-                }
-                dynamodb.put_item(TableName="sqm_research_weekly_rents", Item=item_value)
+                repository.post_sqm_weekly_rents(index)
     except Exception as e:
         print_stack_trace(e)
         crawl_job_failed = True
@@ -82,19 +60,7 @@ def main(event, context):
             index = crawler.crawl_core_logic_daily_home_value()
             message_poster.post_core_logic_daily_home_value(index)
             if not is_dry_run:
-                print("Storing Core Logic index value")
-                item_value = {
-                    "date": {
-                        "S": index.date.isoformat()
-                    },
-                    "change_day_on_day": {
-                        'N': str(index.change_day_on_day)
-                    },
-                    "value": {
-                        'N': str(index.value)
-                    }
-                }
-                dynamodb.put_item(TableName="core_logic_daily_home_value", Item=item_value)
+                repository.post_core_logic_daily_home_value(index)
     except Exception as e:
         print_stack_trace(e)
         crawl_job_failed = True
