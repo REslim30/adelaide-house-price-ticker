@@ -1,0 +1,7 @@
+# top-most EditorConfig file
+root = true
+
+# Set indent size for Python files
+[*.py]
+indent_style = space
+indent_size = 4

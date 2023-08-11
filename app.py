@@ -1,15 +1,15 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-import tweepy
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from selenium.webdriver.chrome.options import Options
 import os
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import traceback
 import boto3
-import uuid
-
+from interfaces import MessagePoster
+from tweet_poster import TweetPoster
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMWeeklyRents
 
 dynamodb = boto3.client("dynamodb")
 
@@ -17,7 +17,7 @@ def main(event, context):
     disable_core_logic_crawl = False
     force_run_proptrack_crawl = False
     force_run_sqm_research_crawl = False
-    test_tweet = False
+    is_dry_run = False
 
     if (isinstance(event, dict)):
         if (event.get("disable_core_logic_crawl") == True):
@@ -26,8 +26,10 @@ def main(event, context):
             force_run_proptrack_crawl = True
         if (event.get("force_run_sqm_research_crawl") == True):
             force_run_sqm_research_crawl = True
-        if (event.get("test_tweet") == True):
-            test_tweet = True
+        if (event.get("is_dry_run") == True):
+            is_dry_run = True
+    
+    message_poster: MessagePoster = TweetPoster(is_dry_run=is_dry_run)
 
     options = Options()
     options.binary_location = '/opt/headless-chromium'
@@ -38,10 +40,6 @@ def main(event, context):
 
     print("Initializing web driver")
     driver = webdriver.Chrome("/opt/chromedriver", options=options)
-    
-    test_tweet_prefix=""
-    if (test_tweet):
-        test_tweet_prefix = f"Test Tweet {uuid.uuid4()}\n"
 
     try:
         time_in_adelaide = datetime.utcnow() + timedelta(hours=9, minutes=30)
@@ -68,20 +66,22 @@ def main(event, context):
                     median_value_in_dollars = row.find_element_by_css_selector(".td:nth-child(4)").text
                     median_value_in_dollars_stripped = median_value_in_dollars.replace('$', '').replace(",", "")
                     last_month = datetime.today() - timedelta(days=28);
-                    tweet(text=f"{test_tweet_prefix}{last_month.strftime('%b %Y')}\nPropTrack All Dwellings Median Price: {median_value_in_dollars} ({format_index_change(percentage_change)}%)")
-                    print("Storing into table")
-                    item_value = {
-                        "month": {
-                            "S": last_month.date().strftime('%Y-%m')
-                        },
-                        "monthly_growth_percentage": {
-                            'N': str(percentage_change)
-                        },
-                        "median_value_in_dollars": {
-                            'N': median_value_in_dollars_stripped
+                    index = PropTrackHousePrices(date(last_month.year, last_month.month, 1), percentage_change, float(median_value_in_dollars_stripped))
+                    message_poster.post_prop_track_house_prices(index)
+                    if not is_dry_run:
+                        print("Storing into table")
+                        item_value = {
+                            "month": {
+                                "S": last_month.date().strftime('%Y-%m')
+                            },
+                            "monthly_growth_percentage": {
+                                'N': str(percentage_change)
+                            },
+                            "median_value_in_dollars": {
+                                'N': median_value_in_dollars_stripped
+                            }
                         }
-                    }
-                    dynamodb.put_item(TableName="proptrack_house_prices", Item=item_value)
+                        dynamodb.put_item(TableName="proptrack_house_prices", Item=item_value)
     except Exception as e:
         print_stack_trace(e)
         crawl_job_failed = True
@@ -95,22 +95,24 @@ def main(event, context):
             table = driver.find_element_by_class_name("changetable")
             row = table.find_element_by_css_selector("tr:nth-child(3)")
             value_in_dollars = row.find_element_by_css_selector("td:nth-child(3)").text
-            change_day_on_day = row.find_element_by_css_selector("td:nth-child(4)").text
+            change_on_prev_week = row.find_element_by_css_selector("td:nth-child(4)").text
             yesterday = datetime.now() - timedelta(days=1)
-            tweet(f"{test_tweet_prefix}Week ending {yesterday.strftime('%d %b %Y')}\nSQM Research Weekly Rents: ${value_in_dollars} ({format_index_change(float(change_day_on_day))})")
-            print("Storing into table")
-            item_value = {
-                "week_ending_on_date": {
-                    "S": yesterday.date().isoformat()
-                },
-                "change_on_prev_week": {
-                    'N': str(change_day_on_day)
-                },
-                "value_in_dollars": {
-                    'N': value_in_dollars
+            index = SQMWeeklyRents(yesterday.date(), change_on_prev_week, float(value_in_dollars))
+            message_poster.post_sqm_weekly_rents(index)
+            if not is_dry_run:
+                print("Storing into table")
+                item_value = {
+                    "week_ending_on_date": {
+                        "S": yesterday.date().isoformat()
+                    },
+                    "change_on_prev_week": {
+                        'N': str(change_on_prev_week)
+                    },
+                    "value_in_dollars": {
+                        'N': value_in_dollars
+                    }
                 }
-            }
-            dynamodb.put_item(TableName="sqm_research_weekly_rents", Item=item_value)
+                dynamodb.put_item(TableName="sqm_research_weekly_rents", Item=item_value)
     except Exception as e:
         print_stack_trace(e)
         crawl_job_failed = True
@@ -124,21 +126,22 @@ def main(event, context):
             daily_index = driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(3)").text
             change_day_on_day = driver.find_element(By.CSS_SELECTOR, "#daily-indices .graph-row:nth-child(4) .graph-column:nth-child(2)").text
             change_day_on_day = float(change_day_on_day)
-            tweet(f"{test_tweet_prefix}{datetime.today().strftime('%d %b %Y')}\nCoreLogic Daily Home Value Index: {daily_index} ({format_index_change(change_day_on_day)})")
-            
-            print("Storing Core Logic index value")
-            item_value = {
-                "date": {
-                    "S": datetime.today().date().isoformat()
-                },
-                "change_day_on_day": {
-                    'N': str(change_day_on_day)
-                },
-                "value": {
-                    'N': daily_index
+            index = CoreLogicDailyHomeValue(datetime.today().date(), change_day_on_day, daily_index)
+            message_poster.post_core_logic_daily_home_value(index)
+            if not is_dry_run:
+                print("Storing Core Logic index value")
+                item_value = {
+                    "date": {
+                        "S": datetime.today().date().isoformat()
+                    },
+                    "change_day_on_day": {
+                        'N': str(change_day_on_day)
+                    },
+                    "value": {
+                        'N': daily_index
+                    }
                 }
-            }
-            dynamodb.put_item(TableName="core_logic_daily_home_value", Item=item_value)
+                dynamodb.put_item(TableName="core_logic_daily_home_value", Item=item_value)
     except Exception as e:
         print_stack_trace(e)
         crawl_job_failed = True
@@ -155,33 +158,6 @@ def main(event, context):
             "statusCode": 200,
             "body": "Index crawling job complete"
         }
-
-def format_index_change(index_change: float or int) -> str:
-    padding = " "
-    prefix = ""
-    if (index_change > 0):
-        indicator = "🟢"
-        prefix = "+"
-    elif (index_change < 0):
-        indicator = "🔴"
-    else:
-        indicator = ""
-        padding = ""
-    
-    return f"{indicator}{padding}{prefix}{index_change}"
-
-def tweet(text: str) -> None:
-    print("Sending tweet")
-    api_key = os.environ.get("API_KEY")
-    api_secret = os.environ.get("API_SECRET")
-    access_token = os.environ.get("ACCESS_TOKEN")
-    access_secret = os.environ.get("ACCESS_SECRET")
-
-    if (api_key == None or api_secret == None or access_token == None or access_secret == None):
-        raise RuntimeError("Missing key/secret");
-
-    client = tweepy.Client(consumer_key=api_key, consumer_secret=api_secret, access_token=access_token, access_token_secret=access_secret)
-    client.create_tweet(text=text)
 
 def print_stack_trace(e: Exception) -> None:
     stack_trace = traceback.format_exc()
