@@ -6,9 +6,9 @@ class FakeContext:
 
 event = {
    "disable_core_logic_crawl": False,
-   "force_run_proptrack_crawl": True,
-   "force_run_sqm_research_crawl": True,
-   "is_dry_run": True,
+   "force_run_proptrack_crawl": False,
+   "force_run_sqm_research_crawl": False,
+   "is_dry_run": False,
 }
 
 res = main(event, FakeContext())
