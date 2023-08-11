@@ -10,3 +10,9 @@ aws lambda invoke --function-name adelaide-house-price-ticker --invocation-type 
 - Keep is_dry_run = True
 - Run python local-test.py
 - Inspect all tweets and delete afterwards
+
+### Deploy
+
+```
+zip deployment.zip *.py
+```
