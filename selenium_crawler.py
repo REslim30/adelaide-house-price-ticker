@@ -35,11 +35,15 @@ class SeleniumCrawler(Crawler):
         self.driver.get("https://sqmresearch.com.au/weekly-rents.php?region=sa-Adelaide&type=c&t=1")
 
         table = self.driver.find_element_by_class_name("changetable")
+        second_row = table.find_element_by_css_selector("tr:nth-child(2)")
+        week_ending_on = second_row.find_element_by_css_selector("td:nth-child(1)").text
+        week_ending_on = week_ending_on.replace("Week ending\n", "").replace("($)", "").strip()
+        week_ending_on = datetime.strptime(week_ending_on, "%d %b %Y").date()
+
         row = table.find_element_by_css_selector("tr:nth-child(3)")
         value_in_dollars = row.find_element_by_css_selector("td:nth-child(3)").text
         change_on_prev_week = row.find_element_by_css_selector("td:nth-child(4)").text
-        yesterday = datetime.now() - timedelta(days=1)
-        return SQMWeeklyRents(yesterday.date(), float(change_on_prev_week), float(value_in_dollars))
+        return SQMWeeklyRents(week_ending_on, float(change_on_prev_week), float(value_in_dollars))
 
     def crawl_prop_track_house_prices(self) -> PropTrackHousePrices:
         print("Crawling Prop Track page")

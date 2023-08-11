@@ -2,7 +2,8 @@ import unittest
 from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMWeeklyRents
 from dynamodb_repository import DynamoDBRepository
 from selenium_crawler import SeleniumCrawler
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
+from dateutil.relativedelta import relativedelta, FR, SA
 import boto3
 
 class CrawlerTest(unittest.TestCase):
@@ -40,8 +41,9 @@ class CrawlerTest(unittest.TestCase):
 
     def test_crawl_sqm_weekly_rents(self):
         result = self.crawler.crawl_sqm_weekly_rents()
-        yesterday = date.today() - timedelta(days=1)
-        self.assertEqual(result.week_ending_on_date, yesterday)
+        last_saturday = (datetime.now() + relativedelta(weekday=SA(-1))).date()
+        friday_before_last_saturday = last_saturday - timedelta(days=1)
+        self.assertEqual(result.week_ending_on_date, friday_before_last_saturday)
         # Rough guides to ensure the values are in the right ballpark
         self.assertGreater(result.dollar_value, 300)
         self.assertLess(result.dollar_value, 1000)
