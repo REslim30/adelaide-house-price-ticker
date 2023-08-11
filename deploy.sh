@@ -10,3 +10,8 @@ zip chromdriver-v2.zip chromedriver headless-chromium
 
 python -m pip install -r requirements.txt -t python/lib/python3.7/site-packages
 zip -r python -i python.zip
+
+rm -rf dist
+mkdir dist
+zip ./dist/deployment.zip *.py
+aws lambda update-function-code --function-name adelaide-house-price-ticker --zip-file fileb://dist/deployment.zip

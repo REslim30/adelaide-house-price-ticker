@@ -14,3 +14,14 @@ class MessagePoster(ABC):
     @abstractmethod
     def post_prop_track_house_prices(self, index: PropTrackHousePrices) -> None:
         pass
+
+class Crawler(ABC):
+    @abstractmethod
+    def crawl_core_logic_daily_home_value(self) -> CoreLogicDailyHomeValue:
+        pass
+
+    def crawl_sqm_weekly_rents(self) -> SQMWeeklyRents:
+        pass
+
+    def crawl_prop_track_house_prices(self) -> PropTrackHousePrices:
+        pass
