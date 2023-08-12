@@ -1,6 +1,6 @@
 from datetime import date
 import unittest
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMWeeklyRents
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMWeeklyRents
 from tweet_poster import TweetPoster
 import os
 import re
@@ -26,6 +26,14 @@ class TweetPosterTest(unittest.TestCase):
     def test_zero(self):
         poster = TweetPoster()
         self.assertEqual("0.0", poster.format_index_change(0.0))
+    
+    def test_custom_decrease_emoji(self):
+        poster = TweetPoster()
+        self.assertEqual("📉 -12.5", poster.format_index_change(-12.5, decrease_emoji="📉"))
+    
+    def test_custom_increase_emoji(self):
+        poster = TweetPoster()
+        self.assertEqual("📈 +12.5", poster.format_index_change(12.5, increase_emoji="📈"))
     
     def test_format_core_logic_daily_home_value(self):
         value = CoreLogicDailyHomeValue(date(2023, 5, 12), 0.15, 171.5)
@@ -62,7 +70,18 @@ class TweetPosterTest(unittest.TestCase):
         poster = TweetPoster(is_dry_run=True)
         result = poster.format_prop_track_house_price(value)
         self.assertRegex(result, r"Test Tweet .*", result)
-
+    
+    def test_format_sqm_total_property_stock(self):
+        value = SQMTotalPropertyStock(date(2023, 3, 1), 9_250, -234)
+        poster = TweetPoster(is_dry_run=False)
+        result = poster.format_sqm_total_property_stock(value)
+        self.assertEqual(result, "Mar 2023\nSQM Research Total Property Stock: 9,250 (📉 -234)")
+    
+    def test_dry_run_format_proptrack_house_prices(self):
+        value = SQMTotalPropertyStock(date(2023, 3, 1), 10000, -234)
+        poster = TweetPoster(is_dry_run=True)
+        result = poster.format_sqm_total_property_stock(value)
+        self.assertRegex(result, r"Test Tweet .*", result)
 
 def pop_environment_variable(env_name: str) -> str or None:
     original_value = os.environ.get(env_name)

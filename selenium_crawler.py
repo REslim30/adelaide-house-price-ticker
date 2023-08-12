@@ -1,11 +1,13 @@
+from time import sleep
 from interfaces import Crawler
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMWeeklyRents
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMWeeklyRents
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from datetime import date, datetime, timedelta
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
 
 class SeleniumCrawler(Crawler):
     def __init__(self):
@@ -74,6 +76,33 @@ class SeleniumCrawler(Crawler):
                 last_month = datetime.today() - timedelta(days=28);
                 return PropTrackHousePrices(date(last_month.year, last_month.month, 1), percentage_change, float(median_value_in_dollars_stripped))
         raise RuntimeError("Could not find Adelaide row in Prop Track table")
+
+    def crawl_sqm_total_property_stock(self) -> SQMTotalPropertyStock:
+        print("Crawling SQM Research Total Property Stock")
+        self.driver.get("https://sqmresearch.com.au/total-property-listings.php?region=sa-Adelaide&type=c&t=1")
+        high_charts_graph = self.driver.find_element_by_css_selector(".highcharts-series-group")
+        actions = ActionChains(self.driver)
+        actions.move_to_element_with_offset(high_charts_graph, high_charts_graph.size['width'], high_charts_graph.size['height'])
+        actions.perform()
+        # Wait until tooltip is visible
+        total_stock = WebDriverWait(self.driver, 15) \
+            .until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".highcharts-tooltip text :nth-child(3)"))) \
+            .text \
+            .replace("Total: ", "") \
+            .replace(",", "")
+        month = self.driver.find_element_by_css_selector(".highcharts-tooltip text :nth-child(1)").text
+        month = datetime.strptime(month, "%b %Y").date()
+        half_year_series = self.driver.find_element_by_css_selector(".highcharts-series.highcharts-series-4 rect:nth-last-child(2)")
+        actions.move_to_element_with_offset(half_year_series, 0, 0)
+        actions.perform()
+        previous_month_total_stock = WebDriverWait(self.driver, 15) \
+            .until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".highcharts-tooltip text :nth-child(3)"))) \
+            .text \
+            .replace("Total: ", "") \
+            .replace(",", "")
+        month_on_month_change = int(total_stock) - int(previous_month_total_stock)
+
+        return SQMTotalPropertyStock(month, int(total_stock), month_on_month_change)
 
     def __del__(self):
         print("Closing driver")

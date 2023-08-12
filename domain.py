@@ -19,3 +19,10 @@ class PropTrackHousePrices:
         self.monthly_growth_percentage = monthly_growth_percentage
         self.median_dollar_value = median_dollar_value
         pass
+
+class SQMTotalPropertyStock:
+    def __init__(self, month_starting_on: date, total_stock: int, month_on_month_change: int) -> None:
+        self.month_starting_on = month_starting_on
+        self.total_stock = total_stock
+        self.month_on_month_change = month_on_month_change
+        pass
