@@ -1,4 +1,5 @@
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMWeeklyRents
+from math import floor, log10
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
 from interfaces import MessagePoster
 import os
 import uuid
@@ -41,6 +42,10 @@ class TweetPoster(MessagePoster):
         self.client.create_tweet(text=self.format_sqm_total_property_stock(index))
         return
     
+    def post_sqm_vacancy_rate(self, index: SQMVacancyRate) -> None:
+        self.client.create_tweet(text=self.format_sqm_vacancy_rate(index))
+        return
+    
     def format_prop_track_house_price(self, index: PropTrackHousePrices):
         return f"{self.test_tweet_prefix()}{index.month_starting_on.strftime('%b %Y')}\nPropTrack All Dwellings Median Price: ${self.comma_separate(index.median_dollar_value)} ({self.format_index_change(index.monthly_growth_percentage, suffix='%')})"
 
@@ -52,6 +57,11 @@ class TweetPoster(MessagePoster):
 
     def format_sqm_total_property_stock(self, index: SQMTotalPropertyStock) -> None:
         return f"{self.test_tweet_prefix()}{index.month_starting_on.strftime('%b %Y')}\nSQM Research Total Property Stock: {self.comma_separate(index.total_stock)} ({self.format_index_change(index.month_on_month_change, decrease_emoji='📉', increase_emoji='📈')})"
+
+    def format_sqm_vacancy_rate(self, index: SQMVacancyRate) -> None:
+        vacancy_rate_rounded = self.round_it(index.vacancy_rate, 2)
+        month_on_month_change_rounded = round(index.month_on_month_change, 4)
+        return f"{self.test_tweet_prefix()}{index.month_starting_on.strftime('%b %Y')}\nSQM Research Vacancy Rate: {vacancy_rate_rounded * 100}% ({self.format_index_change(month_on_month_change_rounded*100, decrease_emoji='📉', increase_emoji='📈')})"
 
     def test_tweet_prefix(self):
         if (self.is_dry_run):
@@ -81,5 +91,10 @@ class TweetPoster(MessagePoster):
         else:
             indicator = ""
             padding = ""
+            # If the index change is 0, we don't need any decimal places
+            index_change = int(0)
         
         return f"{indicator}{padding}{sign_prefix}{prefix}{abs(index_change)}{suffix}"
+    
+    def round_it(self, x, sig):
+        return round(x, sig-int(floor(log10(abs(x))))-1)

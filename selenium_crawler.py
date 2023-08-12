@@ -1,6 +1,6 @@
 from time import sleep
 from interfaces import Crawler
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMWeeklyRents
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from datetime import date, datetime, timedelta
@@ -103,6 +103,31 @@ class SeleniumCrawler(Crawler):
         month_on_month_change = int(total_stock) - int(previous_month_total_stock)
 
         return SQMTotalPropertyStock(month, int(total_stock), month_on_month_change)
+    
+    def crawl_sqm_vacancy_rate(self) -> SQMVacancyRate:
+        print("Crawling SQM Research Vacancy Rate")
+        self.driver.get("https://sqmresearch.com.au/graph_vacancy.php?region=sa-Adelaide&type=c&t=1")
+        vacancy_rate = self.driver.execute_script("""
+            const highCharts = $("#hichartcontainerVR").highcharts()
+            const series = highCharts.series[1]
+            const data = series.data
+            const dataSortedByDate = data.sort((a, b) => a.x - b.x)
+            const lastDataPoint = dataSortedByDate[dataSortedByDate.length - 1]
+            const secondLastDataPoint = dataSortedByDate[dataSortedByDate.length - 2]
+            return {
+                month_starting_on: lastDataPoint.x,
+                vacancy_rate: lastDataPoint.y,
+                month_on_month_change: lastDataPoint.y - secondLastDataPoint.y
+            }
+        """)
+        # Timestamps are in epoch format (milliseconds)
+        # and seem to be with an offset of +10:00 (likely because SQM Research is Sydney based)
+        month_starting_on = (datetime.fromtimestamp(vacancy_rate["month_starting_on"] / 1000) + timedelta(hours=10)) \
+            .date()
+        # Vacancy rate is in percentage terms, so divide by 100
+        vacancy_rate["vacancy_rate"] = vacancy_rate["vacancy_rate"] / 100
+        vacancy_rate["month_on_month_change"] = vacancy_rate["month_on_month_change"] / 100
+        return SQMVacancyRate(month_starting_on, vacancy_rate["vacancy_rate"], vacancy_rate["month_on_month_change"])
 
     def __del__(self):
         print("Closing driver")

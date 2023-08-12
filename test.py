@@ -1,6 +1,6 @@
 from datetime import date
 import unittest
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMWeeklyRents
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
 from tweet_poster import TweetPoster
 import os
 import re
@@ -34,6 +34,11 @@ class TweetPosterTest(unittest.TestCase):
     def test_custom_increase_emoji(self):
         poster = TweetPoster()
         self.assertEqual("📈 +12.5", poster.format_index_change(12.5, increase_emoji="📈"))
+
+            
+    def test_comma_separate(self):
+        poster = TweetPoster()
+        self.assertEqual("1,000,000,000", poster.comma_separate(1_000_000_000))
     
     def test_format_core_logic_daily_home_value(self):
         value = CoreLogicDailyHomeValue(date(2023, 5, 12), 0.15, 171.5)
@@ -82,6 +87,12 @@ class TweetPosterTest(unittest.TestCase):
         poster = TweetPoster(is_dry_run=True)
         result = poster.format_sqm_total_property_stock(value)
         self.assertRegex(result, r"Test Tweet .*", result)
+
+    def test_format_sqm_vacancy_rate(self):
+        value = SQMVacancyRate(date(2023, 3, 1), 0.006512384, 0.00051928374)
+        poster = TweetPoster(is_dry_run=False)
+        result = poster.format_sqm_vacancy_rate(value)
+        self.assertEqual(result, "Mar 2023\nSQM Research Vacancy Rate: 0.65% (📈 +0.05)")
 
 def pop_environment_variable(env_name: str) -> str or None:
     original_value = os.environ.get(env_name)

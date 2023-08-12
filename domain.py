@@ -26,3 +26,12 @@ class SQMTotalPropertyStock:
         self.total_stock = total_stock
         self.month_on_month_change = month_on_month_change
         pass
+
+class SQMVacancyRate:
+    def __init__(self, month_starting_on: date, vacancy_rate: float, month_on_month_change: float) -> None:
+        self.month_starting_on = month_starting_on
+        # Rate of vacancy as a proportion
+        self.vacancy_rate = vacancy_rate
+        # Change in vacancy rate as a delta
+        self.month_on_month_change = month_on_month_change
+        pass
