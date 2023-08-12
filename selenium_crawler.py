@@ -80,9 +80,9 @@ class SeleniumCrawler(Crawler):
     def crawl_sqm_total_property_stock(self) -> SQMTotalPropertyStock:
         print("Crawling SQM Research Total Property Stock")
         self.driver.get("https://sqmresearch.com.au/total-property-listings.php?region=sa-Adelaide&type=c&t=1")
-        high_charts_graph = self.driver.find_element_by_css_selector(".highcharts-series-group")
+        last_data_point = self.driver.find_element_by_css_selector(".highcharts-series.highcharts-series-4 rect:nth-last-child(1)")
         actions = ActionChains(self.driver)
-        actions.move_to_element_with_offset(high_charts_graph, high_charts_graph.size['width'], high_charts_graph.size['height'])
+        actions.move_to_element_with_offset(last_data_point, 0, 0)
         actions.perform()
         # Wait until tooltip is visible
         total_stock = WebDriverWait(self.driver, 15) \
