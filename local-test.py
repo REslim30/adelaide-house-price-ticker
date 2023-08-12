@@ -5,10 +5,11 @@ class FakeContext:
       self.aws_request_id = "test-id"
 
 event = {
-   "disable_core_logic_crawl": False,
+   "disable_core_logic_crawl": True,
    "force_run_proptrack_crawl": False,
-   "force_run_sqm_research_crawl": False,
-   "is_dry_run": False,
+   "force_run_sqm_weekly_rents_crawl": False,
+   "force_run_sqm_total_property_stock": True,
+   "is_dry_run": True,
 }
 
 res = main(event, FakeContext())
