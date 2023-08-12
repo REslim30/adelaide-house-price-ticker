@@ -1,5 +1,5 @@
 import unittest
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMWeeklyRents
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
 from dynamodb_repository import DynamoDBRepository
 from selenium_crawler import SeleniumCrawler
 from datetime import date, timedelta, datetime
@@ -64,8 +64,19 @@ class CrawlerTest(unittest.TestCase):
         self.assertLess(result.month_on_month_change, 5000)
         self.assertIsInstance(result.month_starting_on, date)
         self.assertIsInstance(result.total_stock, int)
-        pass
 
+    def test_crawl_sqm_vacancy_rate(self):
+        result = self.crawler.crawl_sqm_vacancy_rate()
+        self.assertEqual(result.month_starting_on, (date.today() - timedelta(days=28)).replace(day=1))
+        # Rough guides to ensure the values are in the right ballpark
+        self.assertGreater(result.vacancy_rate, 0)
+        self.assertLess(result.vacancy_rate, 0.05)
+        self.assertGreater(result.month_on_month_change, -0.01)
+        self.assertLess(result.month_on_month_change, 0.01)
+        self.assertIsInstance(result.month_starting_on, date)
+        self.assertIsInstance(result.vacancy_rate, float)
+        self.assertIsInstance(result.month_on_month_change, float)
+    
 dynamodb = boto3.client("dynamodb")
 
 class DynamoDBRepositoryTest(unittest.TestCase):
@@ -129,6 +140,20 @@ class DynamoDBRepositoryTest(unittest.TestCase):
             raise e
         finally:
             dynamodb.delete_item(TableName="sqm_research_total_property_stock", Key={"month": {"S": index.month_starting_on.strftime("%Y-%m")}})
+    
+    def test_post_sqm_vacancy_rate(self):
+        try:
+            repository = DynamoDBRepository()
+            index = SQMVacancyRate(date(1939, 2, 1), 0.006123417, 0.0004346636)
+            repository.post_sqm_vacancy_rate(index)
+            item = dynamodb.get_item(TableName="sqm_research_vacancy_rate", Key={"month": {"S": index.month_starting_on.strftime("%Y-%m")}})
+            self.assertEqual(item["Item"]["month"]["S"], "1939-02")
+            self.assertEqual(item["Item"]["vacancy_rate"]["N"], "0.006123417")
+            self.assertEqual(item["Item"]["change_on_prev_month"]["N"], "0.0004346636")
+        except Exception as e:
+            raise e
+        finally:
+            dynamodb.delete_item(TableName="sqm_research_vacancy_rate", Key={"month": {"S": index.month_starting_on.strftime("%Y-%m")}})
 
 if __name__ == '__main__':
     unittest.main()

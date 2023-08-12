@@ -1,4 +1,4 @@
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMWeeklyRents
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
 from interfaces import Repository
 import boto3
 
@@ -67,4 +67,19 @@ class DynamoDBRepository(Repository):
             }
         }
         self.dynamodb.put_item(TableName="sqm_research_total_property_stock", Item=item_value)
+        pass
+
+    def post_sqm_vacancy_rate(self, index: SQMVacancyRate) -> None:
+        item_value = {
+            "month": {
+                "S": index.month_starting_on.strftime("%Y-%m")
+            },
+            "change_on_prev_month": {
+                "N": str(index.month_on_month_change)
+            },
+            "vacancy_rate": {
+                'N': str(index.vacancy_rate)
+            }
+        }
+        self.dynamodb.put_item(TableName="sqm_research_vacancy_rate", Item=item_value)
         pass

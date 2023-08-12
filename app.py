@@ -11,6 +11,7 @@ def main(event, context):
     force_run_proptrack_crawl = False
     force_run_sqm_weekly_rents_crawl = False
     force_run_sqm_total_property_stock = False
+    force_run_sqm_vacancy_rate = False
     is_dry_run = False
 
     if (isinstance(event, dict)):
@@ -22,6 +23,8 @@ def main(event, context):
             force_run_sqm_weekly_rents_crawl = True
         if (event.get("force_run_sqm_total_property_stock") == True):
             force_run_sqm_total_property_stock = True
+        if (event.get("force_run_sqm_vacancy_rate") == True):
+            force_run_sqm_vacancy_rate = True
         if (event.get("is_dry_run") == True):
             is_dry_run = True
     
@@ -47,6 +50,16 @@ def main(event, context):
             message_poster.post_sqm_total_property_stock(index)
             if not is_dry_run:
                 repository.post_sqm_total_property_stock(index)
+    except Exception as e:
+        print_stack_trace(e)
+        crawl_job_failed = True
+    
+    try:
+        if (is_first_day_of_month() or force_run_sqm_vacancy_rate):
+            index = crawler.crawl_sqm_vacancy_rate()
+            message_poster.post_sqm_vacancy_rate(index)
+            if not is_dry_run:
+                repository.post_sqm_vacancy_rate(index)
     except Exception as e:
         print_stack_trace(e)
         crawl_job_failed = True
