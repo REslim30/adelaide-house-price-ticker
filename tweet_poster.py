@@ -1,5 +1,5 @@
 from math import floor, log10
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, QuarterlyMedianHouseSales, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
 from interfaces import MessagePoster
 import os
 import uuid
@@ -16,15 +16,19 @@ class TweetPoster(MessagePoster):
         self.access_token = os.environ.get("ACCESS_TOKEN")
         self.access_secret = os.environ.get("ACCESS_SECRET")
         self.is_dry_run = is_dry_run
+        if (self.api_key == None or self.api_secret == None or self.access_token == None or self.access_secret == None):
+            raise RuntimeError("Missing key/secret");
+    
         self.client = tweepy.Client(
             consumer_key=self.api_key,
             consumer_secret=self.api_secret,
             access_token=self.access_token,
             access_token_secret=self.access_secret
         )
+        auth = tweepy.OAuthHandler(self.api_key, self.api_secret)
+        auth.set_access_token(self.access_token, self.access_secret)
+        self.apiv1 = tweepy.API(auth)
 
-        if (self.api_key == None or self.api_secret == None or self.access_token == None or self.access_secret == None):
-            raise RuntimeError("Missing key/secret");
 
     def post_core_logic_daily_home_value(self, index: CoreLogicDailyHomeValue):
         self.client.create_tweet(text=self.format_core_logic_daily_home_value(index))
@@ -46,6 +50,10 @@ class TweetPoster(MessagePoster):
         self.client.create_tweet(text=self.format_sqm_vacancy_rate(index))
         return
     
+    def post_quarterly_median_house_sales(self, index: QuarterlyMedianHouseSales, img_path: str) -> None:
+        media = self.apiv1.media_upload(img_path);
+        self.client.create_tweet(text=self.format_quarterly_median_house_sales(index), media_ids=[media.media_id_string])
+    
     def format_prop_track_house_price(self, index: PropTrackHousePrices):
         return f"{self.test_tweet_prefix()}{index.month_starting_on.strftime('%b %Y')}\nPropTrack All Dwellings Median Price: ${self.comma_separate(index.median_dollar_value)} ({self.format_index_change(index.monthly_growth_percentage, suffix='%')})"
 
@@ -62,6 +70,9 @@ class TweetPoster(MessagePoster):
         vacancy_rate_rounded = self.round_it(index.vacancy_rate, 2)
         month_on_month_change_rounded = round(index.month_on_month_change, 4)
         return f"{self.test_tweet_prefix()}{index.month_starting_on.strftime('%b %Y')}\nSQM Research Vacancy Rate: {vacancy_rate_rounded * 100}% ({self.format_index_change(month_on_month_change_rounded*100, decrease_emoji='📉', increase_emoji='📈')})"
+
+    def format_quarterly_median_house_sales(self, index: QuarterlyMedianHouseSales) -> None:
+        return f"{self.test_tweet_prefix()}Median House Sales {index.year} Q{index.quarter}\nFull dataset: {index.download_link}"
 
     def test_tweet_prefix(self):
         if (self.is_dry_run):

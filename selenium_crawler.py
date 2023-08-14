@@ -1,6 +1,6 @@
 from time import sleep
 from interfaces import Crawler
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, QuarterlyMedianHouseSales, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from datetime import date, datetime, timedelta
@@ -8,18 +8,19 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
+import requests
 
 class SeleniumCrawler(Crawler):
     def __init__(self):
         options = Options()
-        options.binary_location = '/opt/headless-chromium'
+        options.binary_location = '/usr/bin/headless-chromium'
         options.add_argument('--headless')
         options.add_argument('--no-sandbox')
         options.add_argument('--single-process')
         options.add_argument('--disable-dev-shm-usage')
 
         print("Initializing web driver")
-        self.driver = webdriver.Chrome("/opt/chromedriver", options=options)
+        self.driver = webdriver.Chrome("/usr/local/bin/chromedriver", options=options)
         pass
 
     def crawl_core_logic_daily_home_value(self) -> CoreLogicDailyHomeValue:
@@ -128,6 +129,16 @@ class SeleniumCrawler(Crawler):
         vacancy_rate["vacancy_rate"] = vacancy_rate["vacancy_rate"] / 100
         vacancy_rate["month_on_month_change"] = vacancy_rate["month_on_month_change"] / 100
         return SQMVacancyRate(month_starting_on, vacancy_rate["vacancy_rate"], vacancy_rate["month_on_month_change"])
+
+    def crawl_quarterly_median_house_sales(self) -> QuarterlyMedianHouseSales:
+        self.driver.get("https://data.sa.gov.au/data/dataset/metro-median-house-sales")
+        self.driver.find_element_by_css_selector("#dataset-resources li:nth-child(1) a").click()
+        download_link = self.driver.find_element_by_css_selector("a.resource-url-analytics").get_attribute("href")
+        header = self.driver.find_element_by_css_selector("h1").text
+        year = header.split(" ")[-1]
+        quarter = header.split(" ")[-2].replace("Q", "")
+        r = requests.get(download_link, allow_redirects=True)
+        return QuarterlyMedianHouseSales(int(year), int(quarter), download_link, r.content)
 
     def __del__(self):
         print("Closing driver")

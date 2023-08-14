@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, QuarterlyMedianHouseSales, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
 
 
 class MessagePoster(ABC):
@@ -23,6 +23,10 @@ class MessagePoster(ABC):
     def post_sqm_vacancy_rate(self, index: SQMVacancyRate) -> None:
         pass
 
+    @abstractmethod
+    def post_quarterly_median_house_sales(self, index: QuarterlyMedianHouseSales, img_path: str) -> None:
+        pass
+
 class Crawler(ABC):
     @abstractmethod
     def crawl_core_logic_daily_home_value(self) -> CoreLogicDailyHomeValue:
@@ -42,6 +46,10 @@ class Crawler(ABC):
 
     @abstractmethod
     def crawl_sqm_vacancy_rate(self) -> SQMVacancyRate:
+        pass
+
+    @abstractmethod
+    def crawl_quarterly_median_house_sales(self) -> QuarterlyMedianHouseSales:
         pass
 
 class Repository(ABC):
