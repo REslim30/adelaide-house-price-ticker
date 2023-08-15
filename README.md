@@ -1,5 +1,5 @@
 # Adelaide Housing Market Ticker
-Twitter bot that serves continuous housing market metrics
+Twitter bot that serves housing market data
 
 https://twitter.com/AdlHouseTicker
 
