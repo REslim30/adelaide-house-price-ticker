@@ -35,3 +35,12 @@ class SQMVacancyRate:
         # Change in vacancy rate as a delta
         self.month_on_month_change = month_on_month_change
         pass
+
+class QuarterlyMedianHouseSales:
+    def __init__(self, year: int, quarter: int, download_link: str, excel_file: bytes) -> None:
+        self.year = year
+        # From 1 to 4
+        self.quarter = quarter
+        self.download_link = download_link
+        # Excel spreadsheet
+        self.excel_file = excel_file

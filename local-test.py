@@ -9,7 +9,8 @@ event = {
    "force_run_proptrack_crawl": False,
    "force_run_sqm_weekly_rents_crawl": False,
    "force_run_sqm_total_property_stock": False,
-   "force_run_sqm_vacancy_rate": True,
+   "force_run_sqm_vacancy_rate": False,
+   "force_run_quarterly_median_house_sales": True,
    "is_dry_run": True,
 }
 

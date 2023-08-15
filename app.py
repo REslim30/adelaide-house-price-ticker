@@ -1,3 +1,4 @@
+import chart
 from selenium.webdriver.common.by import By
 from datetime import datetime, timedelta
 import traceback
@@ -12,6 +13,7 @@ def main(event, context):
     force_run_sqm_weekly_rents_crawl = False
     force_run_sqm_total_property_stock = False
     force_run_sqm_vacancy_rate = False
+    force_run_quarterly_median_house_sales = False
     is_dry_run = False
 
     if (isinstance(event, dict)):
@@ -25,6 +27,8 @@ def main(event, context):
             force_run_sqm_total_property_stock = True
         if (event.get("force_run_sqm_vacancy_rate") == True):
             force_run_sqm_vacancy_rate = True
+        if (event.get("force_run_quarterly_median_house_sales") == True):
+            force_run_quarterly_median_house_sales = True
         if (event.get("is_dry_run") == True):
             is_dry_run = True
     
@@ -34,6 +38,15 @@ def main(event, context):
     crawler: Crawler = SeleniumCrawler()
     repository: Repository = DynamoDBRepository()
     
+    try:
+        if (should_run_median_house_sales_crawl() or force_run_quarterly_median_house_sales):
+            index = crawler.crawl_quarterly_median_house_sales()
+            img_path = chart.generate_quarterly_median_house_sales_choropleth(index)
+            message_poster.post_quarterly_median_house_sales(index, img_path)
+    except Exception as e:
+        print_stack_trace(e)
+        crawl_job_failed = True
+
     try:
         if (is_first_day_of_month() or force_run_proptrack_crawl):
             index = crawler.crawl_prop_track_house_prices()
@@ -102,3 +115,9 @@ def print_stack_trace(e: Exception) -> None:
 def is_first_day_of_month() -> bool:
     time_in_adelaide = datetime.utcnow() + timedelta(hours=9, minutes=30)
     return time_in_adelaide.day == 1
+
+def should_run_median_house_sales_crawl() -> bool:
+    # We want to run this crawl on the 1st of the 2nd month following the end of a quarter
+    # e.g. 1st of Feb, May, Aug, Nov
+    time_in_adelaide = datetime.utcnow() + timedelta(hours=9, minutes=30)
+    return time_in_adelaide.day == 1 and time_in_adelaide.month in [2, 5, 8, 11]

@@ -1,10 +1,11 @@
 import unittest
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, QuarterlyMedianHouseSales, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
 from dynamodb_repository import DynamoDBRepository
 from selenium_crawler import SeleniumCrawler
 from datetime import date, timedelta, datetime
 from dateutil.relativedelta import relativedelta, FR, SA
 import boto3
+import chart
 
 class CrawlerTest(unittest.TestCase):
 
@@ -76,6 +77,15 @@ class CrawlerTest(unittest.TestCase):
         self.assertIsInstance(result.month_starting_on, date)
         self.assertIsInstance(result.vacancy_rate, float)
         self.assertIsInstance(result.month_on_month_change, float)
+    
+    def test_crawl_quarterly_median_house_sales(self):
+        result = self.crawler.crawl_quarterly_median_house_sales()
+        self.assertEqual(result.year, date.today().year)
+        self.assertIn(result.quarter, [1, 2, 3, 4])
+        self.assertIsInstance(result.year, int)
+        self.assertIsInstance(result.quarter, int)
+        self.assertIsInstance(result.download_link, str)
+        self.assertIsInstance(result.excel_file, bytes)
     
 dynamodb = boto3.client("dynamodb")
 
@@ -154,6 +164,21 @@ class DynamoDBRepositoryTest(unittest.TestCase):
             raise e
         finally:
             dynamodb.delete_item(TableName="sqm_research_vacancy_rate", Key={"month": {"S": index.month_starting_on.strftime("%Y-%m")}})
+
+class ChartTest(unittest.TestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        pass
+
+    def test_chart_quarterly_median_house_sales(self):
+        with open("test_median_house_sales_2023_q1.xlsx", "rb") as f:
+            index = QuarterlyMedianHouseSales(2023, 1, "https://www.domain.com.au/research/quarterly-house-price-report/", f.read())
+        file = chart.generate_quarterly_median_house_sales_choropleth(index)
+        with open(file, "rb") as f:
+            data = f.read()
+            # Assert more than 5 MB
+            self.assertGreater(len(data), 5 * 1024 * 1024)
+        pass
 
 if __name__ == '__main__':
     unittest.main()
