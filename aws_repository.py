@@ -1,10 +1,13 @@
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, Quarter, QuarterlyMedianHouseSales, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
 from interfaces import Repository
 import boto3
+from botocore.exceptions import ClientError
 
-class DynamoDBRepository(Repository):
+# Repository implementation for AWS
+class AWSRepository(Repository):
     def __init__(self):
         self.dynamodb = boto3.client("dynamodb")
+        self.s3 = boto3.client("s3")
         pass
 
     def post_core_logic_daily_home_value(self, index: CoreLogicDailyHomeValue) -> None:
@@ -83,3 +86,16 @@ class DynamoDBRepository(Repository):
         }
         self.dynamodb.put_item(TableName="sqm_research_vacancy_rate", Item=item_value)
         pass
+
+    def post_quarterly_median_house_sales(self, index: QuarterlyMedianHouseSales) -> None:
+        self.s3.put_object(Bucket="aidand-sa-property-data", Key=f"median-house-prices/{index.year}-Q{index.quarter}.xlsx", Body=index.excel_data)
+        return super().post_quarterly_median_house_sales(index)
+    
+    def quarterly_median_house_sales_exists(self, quarter: Quarter) -> bool:
+        try:
+            self.s3.head_object(Bucket="aidand-sa-property-data", Key=f"median-house-prices/{quarter.year}-Q{quarter.quarter}.xlsx")
+        except ClientError as e:
+            if e.response['Error']['Code'] == "404":
+                return False
+            raise e
+        return True

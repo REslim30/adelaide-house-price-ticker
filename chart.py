@@ -5,7 +5,7 @@ import json
 
 # Returns file path of chart image
 def generate_quarterly_median_house_sales_choropleth(index: QuarterlyMedianHouseSales) -> str:
-    df = pd.read_excel(index.excel_file)
+    df = pd.read_excel(index.excel_data)
     with open('adelaide_suburbs.geojson') as f:
         adelaide_suburbs = json.load(f)
     median_price_field = f'Median {index.quarter}Q {index.year}'

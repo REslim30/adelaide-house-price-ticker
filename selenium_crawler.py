@@ -1,6 +1,6 @@
 from time import sleep
 from interfaces import Crawler
-from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, QuarterlyMedianHouseSales, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
+from domain import CoreLogicDailyHomeValue, PropTrackHousePrices, Quarter, QuarterlyMedianHouseSales, SQMTotalPropertyStock, SQMVacancyRate, SQMWeeklyRents
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from datetime import date, datetime, timedelta
@@ -139,6 +139,13 @@ class SeleniumCrawler(Crawler):
         quarter = header.split(" ")[-2].replace("Q", "")
         r = requests.get(download_link, allow_redirects=True)
         return QuarterlyMedianHouseSales(int(year), int(quarter), download_link, r.content)
+    
+    def check_latest_quarterly_median_house_sales(self) -> Quarter:
+        self.driver.get("https://data.sa.gov.au/data/dataset/metro-median-house-sales")
+        text = self.driver.find_element_by_css_selector("#dataset-resources li:nth-child(1) a").get_attribute("title")
+        year = text.split(" ")[-1]
+        quarter = text.split(" ")[-2].replace("Q", "")
+        return Quarter(int(year), int(quarter))
 
     def __del__(self):
         print("Closing driver")
