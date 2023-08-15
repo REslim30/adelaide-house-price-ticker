@@ -11,3 +11,4 @@ https://twitter.com/AdlHouseTicker
 - PropTrack Home Price Index: https://www.proptrack.com.au/home-price-index/
 - SQM Research Weekly Rents: https://sqmresearch.com.au/weekly-rents.php?region=sa-Adelaide&type=c&t=1
 - SQM Research Total Property Listings: https://sqmresearch.com.au/total-property-listings.php?region=sa-Adelaide&type=c&t=1
+- Metro Median House Sales: https://data.sa.gov.au/data/dataset/metro-median-house-sales
