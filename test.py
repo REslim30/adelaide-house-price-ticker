@@ -59,7 +59,7 @@ class TweetPosterTest(unittest.TestCase):
         value = SQMWeeklyRents(date(2023, 5, 12), -12.17, 612.75)
         poster = TweetPoster(is_dry_run=False)
         result = poster.format_sqm_weekly_rents(value)
-        self.assertEqual(result, "Week ending 12 May 2023\nSQM Research Weekly Rents: $612.75 (🔴 -$12.17)")
+        self.assertEqual(result, "📰 Week ending 12 May 2023\nSQM Research Weekly Rents: $612.75 (🔴 -$12.17)")
 
     def test_dry_run_format_sqm_weekly_rents(self):
         value = SQMWeeklyRents(date(2023, 5, 12), -12.17, 612.75)
@@ -71,7 +71,7 @@ class TweetPosterTest(unittest.TestCase):
         value = PropTrackHousePrices(date(2023, 3, 1), 3.12, 710_234)
         poster = TweetPoster(is_dry_run=False)
         result = poster.format_prop_track_house_price(value)
-        self.assertEqual(result, "Mar 2023\nPropTrack All Dwellings Median Price: $710,234 (🟢 +3.12%)")
+        self.assertEqual(result, "📅 Mar 2023\nPropTrack All Dwellings Median Price: $710,234 (🟢 +3.12%)")
 
     def test_dry_run_format_proptrack_house_prices(self):
         value = PropTrackHousePrices(date(2023, 3, 1), 3.12, 710_234)
@@ -83,7 +83,7 @@ class TweetPosterTest(unittest.TestCase):
         value = SQMTotalPropertyStock(date(2023, 3, 1), 9_250, -234)
         poster = TweetPoster(is_dry_run=False)
         result = poster.format_sqm_total_property_stock(value)
-        self.assertEqual(result, "Mar 2023\nSQM Research Total Property Stock: 9,250 (📉 -234)")
+        self.assertEqual(result, "📅 Mar 2023\nSQM Research Total Property Stock: 9,250 (📉 -234)")
 
     def test_dry_run_format_proptrack_house_prices(self):
         value = SQMTotalPropertyStock(date(2023, 3, 1), 10000, -234)
@@ -95,7 +95,7 @@ class TweetPosterTest(unittest.TestCase):
         value = SQMVacancyRate(date(2023, 3, 1), 0.006512384, 0.00051928374)
         poster = TweetPoster(is_dry_run=False)
         result = poster.format_sqm_vacancy_rate(value)
-        self.assertEqual(result, "Mar 2023\nSQM Research Vacancy Rate: 0.65% (📈 +0.05)")
+        self.assertEqual(result, "📅 Mar 2023\nSQM Research Vacancy Rate: 0.65% (📈 +0.05)")
 
     def test_format_quarterly_house_sales(self):
         value = QuarterlyMedianHouseSales(2023, 1, "https://data.sa.gov.au/data/dataset/metro-median-house-sales", b"")

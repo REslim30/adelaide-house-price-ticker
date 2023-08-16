@@ -55,21 +55,21 @@ class TweetPoster(MessagePoster):
         self.client.create_tweet(text=self.format_quarterly_median_house_sales(index), media_ids=[media.media_id_string])
     
     def format_prop_track_house_price(self, index: PropTrackHousePrices):
-        return f"{self.test_tweet_prefix()}{index.month_starting_on.strftime('%b %Y')}\nPropTrack All Dwellings Median Price: ${self.comma_separate(index.median_dollar_value)} ({self.format_index_change(index.monthly_growth_percentage, suffix='%')})"
+        return f"{self.test_tweet_prefix()}📅 {index.month_starting_on.strftime('%b %Y')}\nPropTrack All Dwellings Median Price: ${self.comma_separate(index.median_dollar_value)} ({self.format_index_change(index.monthly_growth_percentage, suffix='%')})"
 
     def format_sqm_weekly_rents(self, index: SQMWeeklyRents) -> str:
-        return f"{self.test_tweet_prefix()}Week ending {index.week_ending_on_date.strftime('%d %b %Y')}\nSQM Research Weekly Rents: ${index.dollar_value} ({self.format_index_change(float(index.change_on_prev_week), prefix='$')})"
+        return f"{self.test_tweet_prefix()}📰 Week ending {index.week_ending_on_date.strftime('%d %b %Y')}\nSQM Research Weekly Rents: ${index.dollar_value} ({self.format_index_change(float(index.change_on_prev_week), prefix='$')})"
 
     def format_core_logic_daily_home_value(self, index: CoreLogicDailyHomeValue) -> str:
         return f"{self.test_tweet_prefix()}{index.date.strftime('%d %b %Y')}\nCoreLogic Daily Home Value Index: {index.value} ({self.format_index_change(index.change_day_on_day)})"
 
     def format_sqm_total_property_stock(self, index: SQMTotalPropertyStock) -> None:
-        return f"{self.test_tweet_prefix()}{index.month_starting_on.strftime('%b %Y')}\nSQM Research Total Property Stock: {self.comma_separate(index.total_stock)} ({self.format_index_change(index.month_on_month_change, decrease_emoji='📉', increase_emoji='📈')})"
+        return f"{self.test_tweet_prefix()}📅 {index.month_starting_on.strftime('%b %Y')}\nSQM Research Total Property Stock: {self.comma_separate(index.total_stock)} ({self.format_index_change(index.month_on_month_change, decrease_emoji='📉', increase_emoji='📈')})"
 
     def format_sqm_vacancy_rate(self, index: SQMVacancyRate) -> None:
         vacancy_rate_rounded = self.round_it(index.vacancy_rate, 2)
         month_on_month_change_rounded = round(index.month_on_month_change, 4)
-        return f"{self.test_tweet_prefix()}{index.month_starting_on.strftime('%b %Y')}\nSQM Research Vacancy Rate: {vacancy_rate_rounded * 100}% ({self.format_index_change(month_on_month_change_rounded*100, decrease_emoji='📉', increase_emoji='📈')})"
+        return f"{self.test_tweet_prefix()}📅 {index.month_starting_on.strftime('%b %Y')}\nSQM Research Vacancy Rate: {vacancy_rate_rounded * 100}% ({self.format_index_change(month_on_month_change_rounded*100, decrease_emoji='📉', increase_emoji='📈')})"
 
     def format_quarterly_median_house_sales(self, index: QuarterlyMedianHouseSales) -> None:
         return f"{self.test_tweet_prefix()}Median House Sales {index.year} Q{index.quarter}\nFull dataset: {index.download_link}"
